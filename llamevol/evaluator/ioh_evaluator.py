@@ -219,7 +219,7 @@ class IOHEvaluator(AbstractEvaluator):
         if problems is not None and instances is not None and len(problems) != len(instances):
             raise ValueError("The length of problems and instances should be the same")
         
-        feasible_dim = [2, 3, 5, 10, 20, 40]
+        feasible_dim = [2, 3, 5, 6, 10, 20, 40]
         if dim not in feasible_dim:
             raise ValueError(f"dim should be in {feasible_dim}")
 

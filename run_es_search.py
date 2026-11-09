@@ -1,3 +1,5 @@
+import os
+from dotenv import load_dotenv
 import logging
 import getopt
 import sys
@@ -9,19 +11,14 @@ from llamevol import LLaMEvol
 from llamevol.utils import setup_logger
 from Experiments.plot_search_res import plot_search_result
 
+load_dotenv()
 
 def get_IOHEvaluator():
-    budget = 100
-    dim = 5
-    problems = [
-        2, 4,
-        6, 8,
-        12, 14,
-        18, 15,
-        21, 23,
-    ]
-    instances = [[1]] * len(problems)
-    repeat = 3
+    budget = 60
+    dim = 6
+    problems = [1]
+    instances = [[1]]
+    repeat = 10
     evaluator = IOHEvaluator(budget=budget, dim=dim, problems=problems, instances=instances, repeat=repeat)
     return evaluator
 
@@ -63,14 +60,13 @@ def run_exp(n_parent, n_offspring, is_elitist, api_key, n_population=4):
     prompt_generator = get_bo_prompt_generator()
 
     # create a LLM Manager
-    model_name = 'gemini-2.0-flash'
-    base_url = None # use default
+    model_name = 'openai/gpt-oss-120b'
+    base_url = "https://api.groq.com/openai/v1"
 
-    # choose the llm client, e.g. openai, google.
-    # openai: OpenaiClient; google: google genai client; others: AISuiteClient
-    client = 'google'
+    client = "openai"
 
     llm = LLMmanager(model_name=model_name, api_key=api_key, base_url=base_url, client_str=client)
+
 
     # define ES parameters
     log_dir = 'exp_es_search'
@@ -86,8 +82,7 @@ def run_exp(n_parent, n_offspring, is_elitist, api_key, n_population=4):
     # run the evolution
     llamevol = LLaMEvol()
     llm_params = {
-        'temperature': 0.5,
-        'top_k': 60, #!!!! top_k sampling, which might not be supported by all LLMs
+        'temperature': 0.5
     }
 
     llamevol.run_evolutions(llm, evaluator, prompt_generator, population,
@@ -104,7 +99,7 @@ if __name__ == '__main__':
     n_offspring = 1
     is_elitist = False
     n_population = 4
-    api_key = ''
+    api_key = os.getenv("GROQ_API_KEY", "")
     is_ploting = False 
 
     opts, args = getopt.getopt(sys.argv[1:], "p:o:k:en:f", )
