@@ -6,6 +6,7 @@ from .abstract_prompt_generator import PromptGenerator, ResponseHandler, Generat
 from .bo_zeroplus_prompt_generator import BOPromptGeneratorReturnChecker
 from ..individual import Individual
 from ..population import Population
+import ast
 
 
 class BaselineResponseHandler(ResponseHandler):
@@ -22,24 +23,55 @@ class BaselineResponseHandler(ResponseHandler):
             "raw_response": self.raw_response
         }
 
-    def extract_response(self, response:str, task:GenerationTask):
+    def extract_response(self, response: str, task: GenerationTask):
+        self.raw_response = response or ""
+        self.code = ""
+        self.code_name = ""
+        self.desc = ""
+        self.reason = ""
+
         if not response:
             return
 
-        self.raw_response = response
-        sections = ["Description",
-                    "Justification",
-                    "Code"]
-        for section in sections:
-            if section == "Code":
-                self.code, err = self.extract_from_response(response, section)
-                if err:
-                    self.code, _ = self.extract_from_response(response, "Code2")
-                self.code_name, _ = self.extract_from_response(response, "class_name")
-            elif section == "Description":
-                self.desc, _ = self.extract_from_response(response, section)
-            elif section == "Justification":
-                self.reason, _ = self.extract_from_response(response, section)
+        # Extract description and justification
+        self.desc, _ = self.extract_from_response(
+            response, "Description"
+        )
+        self.reason, _ = self.extract_from_response(
+            response, "Justification"
+        )
+
+        # Find a complete Python code block
+        match = re.search(
+            r"```(?:python|py)?[ \t]*\r?\n(.*?)```",
+            response,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+
+        if not match:
+            return
+
+        code = match.group(1).strip()
+
+        # Verify Python syntax before accepting the code
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return
+
+        # Find a BO class at the top level
+        classes = [
+            node.name
+            for node in tree.body
+            if isinstance(node, ast.ClassDef)
+            and node.name.endswith("BO")
+        ]
+
+        if not classes:
+            return
+
+        self.code = code
+        self.code_name = classes[0]
 
     def extract_from_response(self, response: str, section: str, pattern=None) -> tuple[str, str]:
         error_str = ""
@@ -199,13 +231,18 @@ Give an excellent, novel and computationally efficient heuristic algorithm to so
 
     def response_format(self, task:GenerationTask) -> str:
         output_format_prompt = """
-Give the response in the format:
-# Description 
-<description>
-# Justification 
-<justification for the key components of the algorithm or the changes made>
-# Code 
-<code>
+Return your answer using exactly this structure:
+
+# Description
+A concise description of the algorithm (maximum 80 words).
+
+# Justification
+Briefly justify the main algorithmic choices
+(maximum 100 words).
+
+# Code
+```python
+# Complete executable Python implementation
 """
         return output_format_prompt
 

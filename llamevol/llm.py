@@ -199,6 +199,21 @@ class AISuiteClient(LLMClient):
             res = LLMClientResponse(response)
             res.text = response.choices[0].message.content
 
+            choice = response.choices[0]
+
+            logging.info("Finish reason: %s", choice.finish_reason)
+            logging.info("Generated characters: %d", len(choice.message.content or ""))
+
+            if response.usage:
+                logging.info("Completion tokens: %s", response.usage.completion_tokens)
+
+                details = response.usage.completion_tokens_details
+                if details:
+                    logging.info(
+                        "Reasoning tokens: %s",
+                        getattr(details, "reasoning_tokens", None)
+                    )
+
             raw_response = None
             if getattr(response, "_response_timestamp", None) is not None:
                 _response_timestamp = getattr(response, "_response_timestamp")

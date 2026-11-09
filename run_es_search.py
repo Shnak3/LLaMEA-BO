@@ -82,7 +82,9 @@ def run_exp(n_parent, n_offspring, is_elitist, api_key, n_population=4):
     # run the evolution
     llamevol = LLaMEvol()
     llm_params = {
-        'temperature': 0.5
+        'temperature': 0.5,
+        "reasoning_effort": "low",
+        "max_completion_tokens": 8192
     }
 
     llamevol.run_evolutions(llm, evaluator, prompt_generator, population,
